@@ -18,6 +18,12 @@ const pusher = new Pusher({
 
 app.use(express.json());
 
+app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Headers", "*");
+    next();
+});
+
 const connection_url = "mongodb+srv://rishiraamns:hellorr@cluster0.rdn6wnr.mongodb.net/?retryWrites=true&w=majority";
 mongoose.connect(connection_url);
 
@@ -32,6 +38,18 @@ db.once("open", () => {
 
     changeStream.on("change", (change) => {
         console.log("A change occured", change);
+
+        if(change.operationType === 'insert') {
+            const messageDetails = change.fullDocument;
+            pusher.trigger("messages", "inserted", {
+                name: messageDetails.name,
+                message: messageDetails.message,
+                timestamp: messageDetails.timestamp,
+                received: messageDetails.received
+            });
+        } else {
+            console.log("Error triggering Pusher");
+        }
     })
 })
 
